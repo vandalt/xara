@@ -171,9 +171,6 @@ class KPO():
         except KeyError:
             print("No covariance data available")
 
-    # =========================================================================
-    def __del__(self):
-        print("%s deleted" % (repr(self),))
 
     # =========================================================================
     def __str__(self):

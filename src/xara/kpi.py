@@ -144,12 +144,8 @@ class KPI(object):
             print("4. KPI(array=[[x1, y1], [x2, y2], ..., [xn, yn]]) ")
             return None
 
-    # =========================================================================
-    def __del__(self):
-        print("%s deleted " % (repr(self),))
 
     # =========================================================================
-
     def load_aperture_model(self, fname=None, data=None):
         ''' ------------------------------------------------------------------
         Create a virtual aperture model from the coordinates provided in a
