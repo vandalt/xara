@@ -110,7 +110,7 @@ class KPO():
                 msg += f"Underlying error: '{type(e).__name__}: {e}'"
                 raise ValueError(msg)
         elif input_format.upper() == "KPFITS":
-            self._get_kpo_kpfits(hdul)
+            self.get_kpo_kpfits(hdul)
         else:
             raise ValueError(f"Unknown input format {input_format}")
 
@@ -118,7 +118,7 @@ class KPO():
         # ---
         hdul.close()
 
-    def _get_kpo_kpfits(self, hdul: fits.HDUList):
+    def get_kpo_kpfits(self, hdul: fits.HDUList):
         # TODO: Support multi-lambda (axis=1 in numpy), not sure xara does that yet?
         # TODO: Support MJDATE
         self.KPDT.append(hdul['KP-DATA'].data[:, 0])
