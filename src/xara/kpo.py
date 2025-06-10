@@ -17,6 +17,7 @@
     (hdr)
     -------------------------------------------------------------------- '''
 
+from pathlib import Path
 from typing import Union, Optional
 import os
 import warnings
@@ -118,7 +119,21 @@ class KPO():
         # ---
         hdul.close()
 
-    def get_kpo_kpfits(self, hdul: fits.HDUList):
+    @classmethod
+    def from_kpfits_list(cls, kpfits_list: list[str]):
+        kpo = cls(kpfits_list[0], input_format="KPFITS")
+        for file in kpfits_list[1:]:
+            kpo.get_kpo_kpfits(file)
+        return kpo
+
+    def get_kpo_kpfits(self, kpfits: fits.HDUList | str | Path):
+        is_path = isinstance(kpfits, (str, Path))
+        if is_path:
+            hdul = fits.open(kpfits)
+        elif isinstance(kpfits, fits.HDUList):
+            hdul = kpfits
+        else:
+            raise TypeError(f"kpfits should be a string or a string, Path or an HDUList, not {type(kpfits)}")
         # TODO: Support multi-lambda (axis=1 in numpy), not sure xara does that yet?
         # TODO: Support MJDATE
         self.KPDT.append(hdul['KP-DATA'].data[:, 0])
@@ -134,6 +149,9 @@ class KPO():
         cvis_arr = hdul['CVIS-DATA'].data
         # TODO: Support multi-lambda (axis=2 in numpy), not sure xara does that yet?
         self.CVIS.append(cvis_arr[0, :, 0] + 1j * cvis_arr[1, :, 0])
+
+        if is_path:
+            hdul.close()
 
     def _get_kpo_legacy(self, hdul: fits.HDUList):
         # how many data sets are included?

@@ -22,6 +22,11 @@ def pharo_kpo(data_dir: Path) -> KPO:
     return KPO(fname=str(model_path))
 
 
+@pytest.fixture
+def kpfits_path(data_dir: Path) -> Path:
+    return data_dir / "jw01093011001_03103_00001_nis_emp_kpfits.fits"
+
+
 def test_kpo_from_pupil_fits(pharo_kpo):
     assert isinstance(pharo_kpo.CWAVEL, list)
     assert isinstance(pharo_kpo.DETPA, list)
@@ -31,11 +36,7 @@ def test_kpo_from_pupil_fits(pharo_kpo):
     assert len(pharo_kpo.CWAVEL) == 0
 
 
-def test_kpo_from_kpfits():
-    kpfits_path = (
-        Path(__file__).parent / "./data/jw01093011001_03103_00001_nis_emp_kpfits.fits"
-    )
-
+def test_kpo_from_kpfits(kpfits_path):
     with pytest.raises(ValueError, match="Extracting data from file"):
         KPO(fname=kpfits_path)
 
@@ -61,8 +62,26 @@ def test_kpo_from_kpfits():
     # TODO: MJDATE?
 
 
-def test_kpo_to_kpfits(data_dir, tmp_path):
-    kpfits_path = data_dir / "jw01093011001_03103_00001_nis_emp_kpfits.fits"
+def test_kpo_get_kpfits(kpfits_path: Path):
+    kpo = KPO(fname=kpfits_path, input_format="KPFITS")
+    assert len(kpo.KPDT) == 1
+    with fits.open(kpfits_path) as hdul:
+        kpo.get_kpo_kpfits(hdul)
+    assert len(kpo.KPDT) == 2
+    kpo.get_kpo_kpfits(kpfits_path)
+    assert len(kpo.KPDT) == 3
+
+    np.testing.assert_equal(kpo.KPDT[0], kpo.KPDT[1])
+    np.testing.assert_equal(kpo.KPDT[0], kpo.KPDT[2])
+
+
+def test_kpo_from_kpfits_list(kpfits_path: Path):
+    kpfits_list = [kpfits_path for _ in range(4)]
+    kpo = KPO.from_kpfits_list(kpfits_list)
+    assert len(kpo.KPDT) == 4
+
+
+def test_kpo_to_kpfits(kpfits_path, tmp_path):
     if tmp_path.exists():
         raise FileExistsError(f"Wanted to create {tmp_path} for a test but it exists")
     kpo = KPO(fname=kpfits_path, input_format="KPFITS")
@@ -96,8 +115,12 @@ def test_kpo_extract_cube(pharo_kpo: KPO, data_dir: Path, tmp_path: Path):
     saved_kp = hdul["KP-DATA"].data
     cvis_from_hdul = hdul["CVIS-DATA"].data[0] + 1j * hdul["CVIS-DATA"].data[1]
     # TODO: Sig and cov? They are not generated within xara for now so should be OK? Not affected by extraction, only "round-tripped"
-    np.testing.assert_allclose(hdul["KP-DATA"].data, np.expand_dims(pharo_kpo.KPDT[0], axis=1))
-    np.testing.assert_allclose(cvis_from_hdul, np.expand_dims(pharo_kpo.CVIS[0], axis=1))
+    np.testing.assert_allclose(
+        hdul["KP-DATA"].data, np.expand_dims(pharo_kpo.KPDT[0], axis=1)
+    )
+    np.testing.assert_allclose(
+        cvis_from_hdul, np.expand_dims(pharo_kpo.CVIS[0], axis=1)
+    )
 
 
 def test_kpo_extract_frame(pharo_kpo: KPO, data_dir: Path, tmp_path: Path):
@@ -118,7 +141,9 @@ def test_kpo_extract_frame(pharo_kpo: KPO, data_dir: Path, tmp_path: Path):
     tmp_path.unlink()
     cvis_from_hdul = hdul["CVIS-DATA"].data[0] + 1j * hdul["CVIS-DATA"].data[1]
     # TODO: Sig and cov?
-    np.testing.assert_allclose(hdul["KP-DATA"].data, np.expand_dims(pharo_kpo.KPDT, axis=1))
+    np.testing.assert_allclose(
+        hdul["KP-DATA"].data, np.expand_dims(pharo_kpo.KPDT, axis=1)
+    )
     np.testing.assert_allclose(cvis_from_hdul, np.expand_dims(pharo_kpo.CVIS, axis=1))
 
 
