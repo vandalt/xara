@@ -73,6 +73,7 @@ class KPO():
 
 
         self.CWAVEL = []  # image/cube central wavelength
+        self.BWIDTH = []  # image/cube bandwidth
         self.PSCALE = []  # image/cube plate scale
         self.WRAD = []    # data apodization function radius
         self.WTYPE = []   # data apodization function type
@@ -474,7 +475,7 @@ class KPO():
 
     # =========================================================================
     # =========================================================================
-    def extract_KPD_single_cube(self, cube, pscale, cwavel,
+    def extract_KPD_single_cube(self, cube, pscale, cwavel, bwidth=None,
                                 detpa=0.0, mjdate=0.0, target="NO_NAME",
                                 recenter=False, wrad=None, wtype="sgauss",
                                 method="LDFT1"):
@@ -519,6 +520,7 @@ class KPO():
         self.KPDT.append(_kpdt)
 
         self.CWAVEL.append(cwavel)
+        self.BWIDTH.append(bwidth)
         self.PSCALE.append(pscale)
         self.WRAD.append(wrad)
         self.WTYPE.append(wtype)
