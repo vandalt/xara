@@ -208,8 +208,13 @@ class KPO():
             msg += "-> CWAVEL = %.2f microns\n" % (self.CWAVEL[ii] * 1e6,)
             msg += "-> PSCALE = %.2f mas/pixel\n" % (self.PSCALE[ii],)
             msg += "-> DETPA = %.2f (degrees)\n" % (self.DETPA[ii])
-            if self.MJDATE[ii][0] != 0.0:
-                myd = Time(val=self.MJDATE[ii][0], format="mjd")
+            mjdi = self.MJDATE[ii]
+            try:
+                mjdi = mjdi[0]
+            except TypeError:
+                pass
+            if mjdi != 0.0:
+                myd = Time(val=mjdi, format="mjd")
                 msg += "-> MJDATE = %s\n" % myd.to_value("iso")
 
         msg += "-" * 40 + "\n"
