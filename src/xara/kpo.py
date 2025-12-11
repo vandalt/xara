@@ -27,7 +27,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.optimize import leastsq
 from scipy.sparse import diags
-from scipy.interpolate import griddata
 
 import astropy.io.fits as fits
 from astropy.time import Time
@@ -735,8 +734,6 @@ class KPO():
 
         # Kernel phase data
         # Supports only single object
-        # TODO: Handle the extract_single_frame shape
-        # TODO: Handle mix of cubes and frame in extraction
         if len(self.KPDT) > 1:
             warnings.warn(
                 "Saving all extracted frames and cubes in a single KPFITS file"
@@ -1283,3 +1280,77 @@ class KPO():
 
         # ideally, I'd like to have a little plot of the pupil+uv model
         return
+
+    def calibrate(self: "KPO", kpo_cal: "KPO") -> "KPO":
+        """Calibrate the current KPO with a reference KPO
+
+        ----------
+        kpo_cal : KPO
+            Reference (calibrator) KPO object with the same ``KPDT`` shape as the current KPO
+
+        Returns
+        -------
+        KPO
+            Returns a copy of the current KPO with the calibrated ``KPDT`` and error-propagated ``KPSIG``
+
+        """
+        kpo = self.copy()
+        kpo.KPDT = list(np.array(self.KPDT) - np.array(kpo_cal.KPDT))
+        kpo.KPSIG = list(
+            np.sqrt(np.array(self.KPSIG) ** 2 + np.array(kpo_cal.KPSIG) ** 2)
+        )
+        return kpo
+
+    # TODO: Test this on the single frame output
+    def average(self) -> "KPO":
+        """Average kernel phase observations
+
+        For ``kpo.KPDT`` with ``nsets`` datasets with shape ``(nints, nkp)``,
+        each dataset is averaged along the ``nints`` axis.
+
+        If ``kpo.KPSIG`` is already set, performs a weighted average using inverse variance
+        weighting (weights = 1/sigma^2) and propagates errors accordingly.
+        Otherwise, computes a simple median and stores the standard error in ``kpo.KPSIG``.
+
+        Returns
+        -------
+            Returns a copy of the kernel phase observations with all integrations averaged
+        """
+        kpo = self.copy()
+        nsets = len(kpo.KPDT)
+        if all([d.shape[0] == 1 for d in kpo.KPDT]):
+            return kpo
+
+        has_errors = len(kpo.KPSIG) > 0 and all([sig is not None for sig in kpo.KPSIG])
+
+        if not has_errors:
+            kpo.KPSIG = [None] * nsets
+
+        for i in range(nsets):
+            ndim = kpo.KPDT[i].ndim
+            if ndim == 1:
+                warnings.warn(
+                    f"Dataset {i} has only 1 dimension. Skipping average."
+                    " Use extract_KPD_single_cube() to extract all frames in a single dataset.",
+                    stacklevel=2,
+                )
+                continue
+            nints = kpo.KPDT[i].shape[0]
+
+            if has_errors:
+                # Weighted average with inverse variance weighting
+                weights = 1.0 / (kpo.KPSIG[i] ** 2)
+                sum_weights = np.sum(weights, axis=0, keepdims=True)
+                avg_val = np.sum(kpo.KPDT[i] * weights, axis=0, keepdims=True) / sum_weights
+                # Error propagation for weighted average
+                avg_err = np.sqrt(1.0 / np.sum(weights, axis=0))
+                kpo.KPSIG[i] = avg_err
+            else:
+                # Simple average with standard error
+                avg_val = np.expand_dims(np.mean(kpo.KPDT[i], axis=0), 0)
+                avg_err = np.sqrt(np.var(kpo.KPDT[i], axis=0) / (nints - 1))
+                kpo.KPSIG[i] = avg_err
+
+            kpo.KPDT[i] = avg_val
+        return kpo
+
