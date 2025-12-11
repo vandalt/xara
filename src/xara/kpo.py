@@ -17,6 +17,7 @@
     (hdr)
     -------------------------------------------------------------------- '''
 
+from pathlib import Path
 from typing import Union, Optional
 import os
 import warnings
@@ -72,6 +73,7 @@ class KPO():
 
 
         self.CWAVEL = []  # image/cube central wavelength
+        self.BWIDTH = []  # image/cube bandwidth
         self.PSCALE = []  # image/cube plate scale
         self.WRAD = []    # data apodization function radius
         self.WTYPE = []   # data apodization function type
@@ -110,7 +112,7 @@ class KPO():
                 msg += f"Underlying error: '{type(e).__name__}: {e}'"
                 raise ValueError(msg)
         elif input_format.upper() == "KPFITS":
-            self._get_kpo_kpfits(hdul)
+            self.get_kpo_kpfits(hdul)
         else:
             raise ValueError(f"Unknown input format {input_format}")
 
@@ -118,7 +120,21 @@ class KPO():
         # ---
         hdul.close()
 
-    def _get_kpo_kpfits(self, hdul: fits.HDUList):
+    @classmethod
+    def from_kpfits_list(cls, kpfits_list: list[str]):
+        kpo = cls(kpfits_list[0], input_format="KPFITS")
+        for file in kpfits_list[1:]:
+            kpo.get_kpo_kpfits(file)
+        return kpo
+
+    def get_kpo_kpfits(self, kpfits: fits.HDUList | str | Path):
+        is_path = isinstance(kpfits, (str, Path))
+        if is_path:
+            hdul = fits.open(kpfits)
+        elif isinstance(kpfits, fits.HDUList):
+            hdul = kpfits
+        else:
+            raise TypeError(f"kpfits should be a string or a string, Path or an HDUList, not {type(kpfits)}")
         # TODO: Support multi-lambda (axis=1 in numpy), not sure xara does that yet?
         # TODO: Support MJDATE
         self.KPDT.append(hdul['KP-DATA'].data[:, 0])
@@ -134,6 +150,9 @@ class KPO():
         cvis_arr = hdul['CVIS-DATA'].data
         # TODO: Support multi-lambda (axis=2 in numpy), not sure xara does that yet?
         self.CVIS.append(cvis_arr[0, :, 0] + 1j * cvis_arr[1, :, 0])
+
+        if is_path:
+            hdul.close()
 
     def _get_kpo_legacy(self, hdul: fits.HDUList):
         # how many data sets are included?
@@ -171,9 +190,6 @@ class KPO():
         except KeyError:
             print("No covariance data available")
 
-    # =========================================================================
-    def __del__(self):
-        print("%s deleted" % (repr(self),))
 
     # =========================================================================
     def __str__(self):
@@ -192,8 +208,13 @@ class KPO():
             msg += "-> CWAVEL = %.2f microns\n" % (self.CWAVEL[ii] * 1e6,)
             msg += "-> PSCALE = %.2f mas/pixel\n" % (self.PSCALE[ii],)
             msg += "-> DETPA = %.2f (degrees)\n" % (self.DETPA[ii])
-            if self.MJDATE[ii][0] != 0.0:
-                myd = Time(val=self.MJDATE[ii][0], format="mjd")
+            mjdi = self.MJDATE[ii]
+            try:
+                mjdi = mjdi[0]
+            except TypeError:
+                pass
+            if mjdi != 0.0:
+                myd = Time(val=mjdi, format="mjd")
                 msg += "-> MJDATE = %s\n" % myd.to_value("iso")
 
         msg += "-" * 40 + "\n"
@@ -459,7 +480,7 @@ class KPO():
 
     # =========================================================================
     # =========================================================================
-    def extract_KPD_single_cube(self, cube, pscale, cwavel,
+    def extract_KPD_single_cube(self, cube, pscale, cwavel, bwidth=None,
                                 detpa=0.0, mjdate=0.0, target="NO_NAME",
                                 recenter=False, wrad=None, wtype="sgauss",
                                 method="LDFT1"):
@@ -504,6 +525,7 @@ class KPO():
         self.KPDT.append(_kpdt)
 
         self.CWAVEL.append(cwavel)
+        self.BWIDTH.append(bwidth)
         self.PSCALE.append(pscale)
         self.WRAD.append(wrad)
         self.WTYPE.append(wtype)

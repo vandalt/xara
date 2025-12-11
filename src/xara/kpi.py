@@ -144,12 +144,8 @@ class KPI(object):
             print("4. KPI(array=[[x1, y1], [x2, y2], ..., [xn, yn]]) ")
             return None
 
-    # =========================================================================
-    def __del__(self):
-        print("%s deleted " % (repr(self),))
 
     # =========================================================================
-
     def load_aperture_model(self, fname=None, data=None):
         ''' ------------------------------------------------------------------
         Create a virtual aperture model from the coordinates provided in a
@@ -650,21 +646,22 @@ class KPI(object):
         blm_hdu.header.add_comment("Baseline Mapping Matrix")
         blm_hdu.header['EXTNAME'] = 'BLM-MAT'
 
-        # Pupil mask HDU
+        # compile HDU list and save
+        # -------------------------
+        self.hdul = fits.HDUList([pri_hdu, tb1_hdu, tb2_hdu, kpm_hdu, blm_hdu])
+
+        # Pupil mask HDU if it exists
         if self.pupil_mask is not None:
             mask_hdu = fits.ImageHDU(self.pupil_mask)
             mask_hdu.header.add_comment("Pupil mask used to create aperture model")
             mask_hdu.header["PUPLSCAL"] = (self.pupil_scale or 0.0, "Pupil scale of the mask [m]")
             mask_hdu.header["EXTNAME"] = "PUPIL-MASK"
+            self.hdul.append(mask_hdu)
 
-        # compile HDU list and save
-        # -------------------------
-
-        self.hdul = fits.HDUList([pri_hdu, tb1_hdu, tb2_hdu, kpm_hdu, blm_hdu])
 
         if fname is not None:
             self.hdul.writeto(fname, overwrite=True)
-        return(self.hdul)
+        return self.hdul
 
     # =========================================================================
     # =========================================================================
