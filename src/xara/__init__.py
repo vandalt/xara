@@ -26,7 +26,7 @@
       detector position angle and epoch to enable their interpretation
       ---------------------------------------------------------------- '''
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 from xara import (
     core as core,
@@ -35,3 +35,7 @@ from xara import (
     kpi as kpi,
     kpo as kpo,
 )
+
+from xara.kpo import KPO
+from xara.kpi import KPI
+from xara.iwfs import IWFS

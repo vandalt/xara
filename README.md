@@ -18,5 +18,5 @@ From 2016 to 2022, the development of XARA was supported by the ERC KERNEL proje
 
 ## Installation
 
-> pip install xara
+> pip install xara-astro
 

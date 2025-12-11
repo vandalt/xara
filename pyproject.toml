@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "xara"
+name = "xara-astro"
 dynamic = ["version"]
 authors = [
   { name = "Frantz Martinache", email="frantz.martinache@oca.eu"},
@@ -20,6 +20,9 @@ classifiers = [
 
 [project.optional-dependencies]
 test = ["pytest", "xaosim"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xara"]
 
 [tool.hatch.version]
 path = "src/xara/__init__.py"
