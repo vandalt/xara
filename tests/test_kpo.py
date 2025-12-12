@@ -3,7 +3,6 @@ import numpy as np
 from astropy.io import fits
 import pytest
 from xara.kpo import KPO
-from xara.kpi import KPI
 
 
 @pytest.fixture
@@ -112,9 +111,7 @@ def test_kpo_extract_cube(pharo_kpo: KPO, data_dir: Path, tmp_path: Path):
 
     hdul = pharo_kpo.save_as_kpfits(tmp_path)
     tmp_path.unlink()
-    saved_kp = hdul["KP-DATA"].data
     cvis_from_hdul = hdul["CVIS-DATA"].data[0] + 1j * hdul["CVIS-DATA"].data[1]
-    # TODO: Sig and cov? They are not generated within xara for now so should be OK? Not affected by extraction, only "round-tripped"
     np.testing.assert_allclose(
         hdul["KP-DATA"].data, np.expand_dims(pharo_kpo.KPDT[0], axis=1)
     )
@@ -137,14 +134,36 @@ def test_kpo_extract_frame(pharo_kpo: KPO, data_dir: Path, tmp_path: Path):
     assert pharo_kpo.KPDT[0].ndim == 1
     assert pharo_kpo.KPDT[0].shape == (pharo_kpo.kpi.KPM.shape[0],)
 
-    hdul = pharo_kpo.save_as_kpfits(tmp_path)
+    with pytest.warns(UserWarning, match="Saving all extracted frames and cubes in a single KPFITS file"):
+        hdul = pharo_kpo.save_as_kpfits(tmp_path)
     tmp_path.unlink()
     cvis_from_hdul = hdul["CVIS-DATA"].data[0] + 1j * hdul["CVIS-DATA"].data[1]
-    # TODO: Sig and cov?
     np.testing.assert_allclose(
         hdul["KP-DATA"].data, np.expand_dims(pharo_kpo.KPDT, axis=1)
     )
     np.testing.assert_allclose(cvis_from_hdul, np.expand_dims(pharo_kpo.CVIS, axis=1))
 
 
-# TODO: Test saving to kpfits with both extractions
+def test_kpo_average(pharo_kpo: KPO, data_dir: Path):
+    with fits.open(data_dir / "PHARO/tgt_cube.fits") as hdul:
+        tgt_cube = hdul[0].data
+    pscale = 25.0  # plate scale of the image in mas/pixels
+    wl = 2.145e-6  # central wavelength in meters (Hayward paper)
+    assert len(pharo_kpo.KPDT) == 0
+    pharo_kpo_frame = pharo_kpo.copy()
+    pharo_kpo.extract_KPD_single_cube(
+        tgt_cube, pscale, wl, target="alpha Ophiuchi", recenter=True
+    )
+
+    avg_kpo = pharo_kpo.average()
+
+    assert len(avg_kpo.KPDT) == len(pharo_kpo.KPDT)
+    np.testing.assert_allclose(avg_kpo.KPDT[0][0], np.mean(pharo_kpo.KPDT[0], axis=0))
+
+    for tgt_frame in tgt_cube:
+        pharo_kpo_frame.extract_KPD_single_frame(
+            tgt_frame, pscale, wl, target="alpha Ophiuchi", recenter=True
+        )
+    with pytest.warns(UserWarning, match="Dataset"):
+        avg_kpo_frame = pharo_kpo_frame.average()
+    np.testing.assert_equal(avg_kpo_frame.KPDT, pharo_kpo_frame.KPDT)
