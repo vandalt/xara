@@ -1301,8 +1301,7 @@ class KPO():
         )
         return kpo
 
-    # TODO: Test this on the single frame output
-    def average(self) -> "KPO":
+    def average(self, axis="ints") -> "KPO":
         """Average kernel phase observations
 
         For ``kpo.KPDT`` with ``nsets`` datasets with shape ``(nints, nkp)``,
@@ -1322,6 +1321,23 @@ class KPO():
             return kpo
 
         has_errors = len(kpo.KPSIG) > 0 and all([sig is not None for sig in kpo.KPSIG])
+
+        def _make_2d(kplist):
+            """Convert KPDT list to a 2D array with shape (nints*nsets, nkp)"""
+            kparr = np.stack(kplist)
+            if kparr.ndim == 2:
+                return kparr
+            kparr = kparr.reshape(-1, kparr.shape[-1])
+            return kparr
+
+        # If both axes, rehsape the data and errors
+        if axis == "both":
+            kpo.KPDT = [_make_2d(kpo.KPDT)]
+            if has_errors:
+                kpo.KPSIG = [_make_2d(kpo.KPSIG)]
+            nsets = 1
+        elif axis != "ints":
+            raise ValueError(f"Unexpected axis {axis}. Must be 'ints' or 'all'")
 
         if not has_errors:
             kpo.KPSIG = [None] * nsets

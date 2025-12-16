@@ -167,3 +167,7 @@ def test_kpo_average(pharo_kpo: KPO, data_dir: Path):
     with pytest.warns(UserWarning, match="Dataset"):
         avg_kpo_frame = pharo_kpo_frame.average()
     np.testing.assert_equal(avg_kpo_frame.KPDT, pharo_kpo_frame.KPDT)
+
+    avg_kpo_frame_both = pharo_kpo_frame.average(axis="both")
+    np.testing.assert_allclose(avg_kpo.KPDT, avg_kpo_frame_both.KPDT)
+    np.testing.assert_allclose(avg_kpo.KPSIG, avg_kpo_frame_both.KPSIG)
