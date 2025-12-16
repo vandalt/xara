@@ -134,7 +134,10 @@ def test_kpo_extract_frame(pharo_kpo: KPO, data_dir: Path, tmp_path: Path):
     assert pharo_kpo.KPDT[0].ndim == 1
     assert pharo_kpo.KPDT[0].shape == (pharo_kpo.kpi.KPM.shape[0],)
 
-    with pytest.warns(UserWarning, match="Saving all extracted frames and cubes in a single KPFITS file"):
+    with pytest.warns(
+        UserWarning,
+        match="Saving all extracted frames and cubes in a single KPFITS file",
+    ):
         hdul = pharo_kpo.save_as_kpfits(tmp_path)
     tmp_path.unlink()
     cvis_from_hdul = hdul["CVIS-DATA"].data[0] + 1j * hdul["CVIS-DATA"].data[1]

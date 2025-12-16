@@ -59,3 +59,12 @@ You can then run the tests with
 ```bash
 python -m pytest
 ```
+
+We use pre-commit to format the code before pushing it to the repository.
+You can install pre-commit with `pip install pre-commit` and set it up with
+
+```bash
+pre-commit install
+```
+
+It will then run automatically after every commit.

@@ -1,38 +1,37 @@
-''' --------------------------------------------------------------------
-       XARA: a package for eXtreme Angular Resolution Astronomy
-    --------------------------------------------------------------------
-    ---
-    xara is a python module to create, and extract Fourier-phase data
-    structures, using the theory described in the two following papers:
-    - Martinache, 2010, ApJ, 724, 464.
-    - Martinache, 2013, PASP, 125, 422.
+"""--------------------------------------------------------------------
+   XARA: a package for eXtreme Angular Resolution Astronomy
+--------------------------------------------------------------------
+---
+xara is a python module to create, and extract Fourier-phase data
+structures, using the theory described in the two following papers:
+- Martinache, 2010, ApJ, 724, 464.
+- Martinache, 2013, PASP, 125, 422.
 
-    This file contains several tools used by the KPI and KPO classes to
-    create and manipulate kernel- and eigen-phase data structures.
-    -------------------------------------------------------------------- '''
+This file contains several tools used by the KPI and KPO classes to
+create and manipulate kernel- and eigen-phase data structures.
+--------------------------------------------------------------------"""
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.signal import medfilt2d as medfilt
 from scipy.special import j1
 from scipy.optimize import leastsq
 
-''' ================================================================
+""" ================================================================
     small tools and functions useful for the manipulation of
     Ker-phase data.
-    ================================================================ '''
+    ================================================================ """
 
 shift = np.fft.fftshift
 fft = np.fft.fft2
 ifft = np.fft.ifft2
 
-dtor = np.pi/180.0
-i2pi = 1j*2.0*np.pi
+dtor = np.pi / 180.0
+i2pi = 1j * 2.0 * np.pi
 
 
 # =========================================================================
 def _xyic(ys, xs, between_pix=False):
-    ''' --------------------------------------------------------------
+    """--------------------------------------------------------------
     Private utility: returns two arrays of (y, x) image coordinates
 
     Array values give the pixel coordinates relative to the center of
@@ -48,18 +47,18 @@ def _xyic(ys, xs, between_pix=False):
     Returns:
     -------
     A tuple of two arrays: (yy, xx) ... IN THAT ORDER!
-    -------------------------------------------------------------- '''
+    --------------------------------------------------------------"""
     offset = 0
     if between_pix is True:
         offset = 0.5
-    xx = np.outer(np.ones(ys), np.arange(xs)-xs//2+offset)
-    yy = np.outer(np.arange(ys)-ys//2+offset, np.ones(xs))
+    xx = np.outer(np.ones(ys), np.arange(xs) - xs // 2 + offset)
+    yy = np.outer(np.arange(ys) - ys // 2 + offset, np.ones(xs))
     return (yy, xx)
 
 
 # =========================================================================
 def _dist(ys, xs, between_pix=False):
-    ''' --------------------------------------------------------------
+    """--------------------------------------------------------------
     Private utility: returns a distance 2D array
 
     Array values give the distance to array center, that can be offset
@@ -70,14 +69,14 @@ def _dist(ys, xs, between_pix=False):
     - ys: (integer) vertical size of the array (in pixels)
     - xs: (integer) horizontal size of the array (in pixels)
     - between_pix: (boolean) places center of array between pixels
-    -------------------------------------------------------------- '''
+    --------------------------------------------------------------"""
     yy, xx = _xyic(ys, xs, between_pix=between_pix)
     return np.hypot(yy, xx)
 
 
 # =========================================================================
 def polar_coord_map(ys, xs, scale=1.0, between_pix=False):
-    ''' --------------------------------------------------------------
+    """--------------------------------------------------------------
     Returns two 2D arrays of polar coordinates (distance & azimut)
     relative to the center of a grid map of size (ys x xs), that can
     be offset by 0.5 pixel if between_pix is set to True
@@ -99,27 +98,27 @@ def polar_coord_map(ys, xs, scale=1.0, between_pix=False):
     -------
     The use of this function assumes that azimuts are measured from the
     map "north" and run counter-clockwise!
-    -------------------------------------------------------------- '''
+    --------------------------------------------------------------"""
     yy, xx = _xyic(ys, xs, between_pix=between_pix)
-    azim = -np.arctan2(xx, yy)/dtor % 360
-    return scale*np.hypot(yy, xx), azim
+    azim = -np.arctan2(xx, yy) / dtor % 360
+    return scale * np.hypot(yy, xx), azim
 
 
 # =========================================================================
 def mas2rad(x):
-    ''' Convenient little function to convert milliarcsec to radians '''
-    return(x * 4.8481368110953599e-09)  # *= np.pi/(180*3600*1000)
+    """Convenient little function to convert milliarcsec to radians"""
+    return x * 4.8481368110953599e-09  # *= np.pi/(180*3600*1000)
 
 
 # =========================================================================
 def rad2mas(x):
-    '''  convert radians to mas'''
-    return(x / 4.8481368110953599e-09)  # /= np.pi/(180*3600*1000)
+    """convert radians to mas"""
+    return x / 4.8481368110953599e-09  # /= np.pi/(180*3600*1000)
 
 
 # =========================================================================
 def colinearity_map(smaps, signal):
-    ''' --------------------------------------------------------------
+    """--------------------------------------------------------------
     Computes the colinearity map between precomputed signals on a grid
     of positions (smaps) and a signal.
 
@@ -132,7 +131,7 @@ def colinearity_map(smaps, signal):
     ----
     Assumes that you know what you do and have matched the
     dimensions of *smaps* and *signal*
-    -------------------------------------------------------------- '''
+    --------------------------------------------------------------"""
     if len(smaps.shape) == 4:
         tmp = np.tensordot(signal, smaps, axes=([0, 1], [0, 1]))
     else:
@@ -143,15 +142,15 @@ def colinearity_map(smaps, signal):
 
 # =========================================================================
 def rebin(a, shape):
-    sh = shape[0], a.shape[0]//shape[0], shape[1], a.shape[1]//shape[1]
+    sh = shape[0], a.shape[0] // shape[0], shape[1], a.shape[1] // shape[1]
     return a.reshape(sh).mean(-1).mean(1)
 
 
 # =========================================================================
 def negentropy(a):
-    ''' Evaluate the negentropy associated to an strict positive array "a".
+    """Evaluate the negentropy associated to an strict positive array "a".
     The result is a positive number.
-    '''
+    """
     a1 = a.copy() / a.sum()
     entm = np.log10(a1) * a1
     return -1.0 * entm.sum()
@@ -159,7 +158,7 @@ def negentropy(a):
 
 # =========================================================================
 def cvis_binary(u, v, wavel, p, detpa=None):
-    ''' Calc. complex vis measured by an array for a binary star
+    """Calc. complex vis measured by an array for a binary star
     ----------------------------------------------------------------
     p: 3-component vector (+2 optional), the binary "parameters":
     - p[0] = sep (mas)
@@ -174,7 +173,7 @@ def cvis_binary(u, v, wavel, p, detpa=None):
     - wavel: wavelength (meters)
 
     - detpa: detector position angle (degrees)
-    ---------------------------------------------------------------- '''
+    ----------------------------------------------------------------"""
     if detpa is None:
         th0 = 0.0
     else:
@@ -187,20 +186,20 @@ def cvis_binary(u, v, wavel, p, detpa=None):
     dra = -mas2rad(p[0] * np.sin(th + th0))
 
     # baselines into number of wavelength
-    x = np.hypot(u, v)/wavel
+    x = np.hypot(u, v) / wavel
 
     # decompose into two "luminosity"
-    l2 = 1. / (p[2] + 1)
+    l2 = 1.0 / (p[2] + 1)
     l1 = 1 - l2
 
     # phase-factor
-    phi = np.exp(-i2pi*(u*dra + v*ddec)/wavel)
+    phi = np.exp(-i2pi * (u * dra + v * ddec) / wavel)
 
     # optional effect of resolved individual sources
     if p.size == 5:
         th1, th2 = mas2rad(p[3]), mas2rad(p[4])
-        v1 = 2*j1(np.pi*th1*x)/(np.pi*th1*x)
-        v2 = 2*j1(np.pi*th2*x)/(np.pi*th2*x)
+        v1 = 2 * j1(np.pi * th1 * x) / (np.pi * th1 * x)
+        v2 = 2 * j1(np.pi * th2 * x) / (np.pi * th2 * x)
     else:
         v1 = np.ones(u.size, dtype=u.dtype)
         v2 = np.ones(u.size, dtype=u.dtype)
@@ -212,17 +211,17 @@ def cvis_binary(u, v, wavel, p, detpa=None):
 
 # =========================================================================
 def grid_precalc_aux_cvis(u, v, wavel, mgrid, gscale):
-    ''' Pre-calculates an auxilliary array necessary for the complex
+    """Pre-calculates an auxilliary array necessary for the complex
     visibility modeling of a "complex" (i.e. grid-type) source
     ----------------------------------------------------------------
     - u,v:    baseline coordinates (meters)
     - wavel:  wavelength (meters)
     - mgrid:  square grid array describing the object
     - gscale: scalar defining the "mgrid" pitch size (in mas)
-    ---------------------------------------------------------------- '''
+    ----------------------------------------------------------------"""
     # relative locations
     sz, dz = mgrid.shape[0], mgrid.shape[0] / 2
-    xx, yy = np.meshgrid(np.arange(sz)-dz, np.arange(sz)-dz)
+    xx, yy = np.meshgrid(np.arange(sz) - dz, np.arange(sz) - dz)
 
     # flatten all 2D arrays
     dra = mas2rad(gscale * np.ravel(xx))
@@ -235,14 +234,14 @@ def grid_precalc_aux_cvis(u, v, wavel, mgrid, gscale):
 
 # =========================================================================
 def grid_src_cvis(u, v, wavel, mgrid, gscale, phi=None):
-    ''' Calc. complex vis measured by an array for a complex object
+    """Calc. complex vis measured by an array for a complex object
     ----------------------------------------------------------------
     - u,v:    baseline coordinates (meters)
     - wavel:  wavelength (meters)
     - mgrid:  square grid array describing the object
     - gscale: scalar defining the "mgrid" pitch size (in mas)
     - phi:    pre-computed auxilliary array to speed up calculation
-    ---------------------------------------------------------------- '''
+    ----------------------------------------------------------------"""
 
     if phi is None:
         phi = grid_precalc_aux_cvis(u, v, wavel, mgrid, gscale)
@@ -252,7 +251,7 @@ def grid_src_cvis(u, v, wavel, mgrid, gscale, phi=None):
 
 # =========================================================================
 def phase_binary(u, v, wavel, p, deg=True):
-    ''' Calculate the phases observed by an array on a binary star
+    """Calculate the phases observed by an array on a binary star
     ----------------------------------------------------------------
     p: 3-component vector (+2 optional), the binary "parameters":
     - p[0] = sep (mas)
@@ -265,18 +264,18 @@ def phase_binary(u, v, wavel, p, deg=True):
 
     - u,v: baseline coordinates (meters)
     - wavel: wavelength (meters)
-    ---------------------------------------------------------------- '''
+    ----------------------------------------------------------------"""
     cvis = cvis_binary(u, v, wavel, p)
     phase = np.angle(cvis, deg=deg)
     if deg:
-        return np.mod(phase + 10980., 360.) - 180.0
+        return np.mod(phase + 10980.0, 360.0) - 180.0
     else:
         return phase
 
 
 # =========================================================================
 def vis2_binary(u, v, wavel, p):
-    ''' Calc. squared vis. observed by an array on a binary star
+    """Calc. squared vis. observed by an array on a binary star
     --------------------------------------------------------------
     p: 3-component vector (+2 optional), the binary "parameters":
       p[0] = sep (mas)
@@ -289,21 +288,21 @@ def vis2_binary(u, v, wavel, p):
 
     u,v: baseline coordinates (meters)
     wavel: wavelength (meters)
-    ---------------------------------------------------------------- '''
+    ----------------------------------------------------------------"""
 
     cvis = cvis_binary(u, v, wavel, p, norm=True)
-    return np.abs(cvis)**2
+    return np.abs(cvis) ** 2
 
 
 # =========================================================================
 def uniform_disk(ys, xs, radius, between_pix=False):
-    ''' Returns a centered 2D uniform disk array
+    """Returns a centered 2D uniform disk array
     ----------------------------------------------
     Parameters:
     - (ys, xs)   : array size
     - radius     : radius of the disk
     - between_pix: (boolean) center between pixels
-    ---------------------------------------------- '''
+    ----------------------------------------------"""
     mydist = _dist(ys, xs, between_pix=between_pix)
     ud = np.zeros_like(mydist)
     ud[mydist <= radius] = 1.0
@@ -312,20 +311,20 @@ def uniform_disk(ys, xs, radius, between_pix=False):
 
 # =========================================================================
 def super_gauss(ys, xs, radius, between_pix=False):
-    ''' Returns a centered 2D super-Gaussian array
+    """Returns a centered 2D super-Gaussian array
     ----------------------------------------------
     Parameters:
     - (xs, ys)   : array size
     - radius     : "radius" of the Super-Gaussian
     - between_pix: (boolean) center between pixels
-    ---------------------------------------------- '''
+    ----------------------------------------------"""
     mydist = _dist(ys, xs, between_pix=between_pix)
-    return np.exp(-(mydist/radius)**4)
+    return np.exp(-((mydist / radius) ** 4))
 
 
 # =========================================================================
 def super_gauss0(xs, ys, x0, y0, w):
-    ''' Returns an 2D super-Gaussian function
+    """Returns an 2D super-Gaussian function
     ------------------------------------------
     Parameters:
     - (xs, ys) : array size
@@ -333,19 +332,19 @@ def super_gauss0(xs, ys, x0, y0, w):
     - w        : width of the Super-Gaussian
 
     (Kept for reference for now)
-    ------------------------------------------ '''
+    ------------------------------------------"""
 
-    x = np.outer(np.arange(xs), np.ones(ys))-x0
-    y = np.outer(np.ones(xs), np.arange(ys))-y0
+    x = np.outer(np.arange(xs), np.ones(ys)) - x0
+    y = np.outer(np.ones(xs), np.arange(ys)) - y0
     dist = np.sqrt(x**2 + y**2)
 
-    gg = np.exp(-(dist/w)**4)
+    gg = np.exp(-((dist / w) ** 4))
     return gg
 
 
 # =========================================================================
 def centroid(image, threshold=0, binarize=False):
-    ''' ------------------------------------------------------
+    """------------------------------------------------------
     Determines the center of gravity of an array
 
     Parameters:
@@ -358,7 +357,7 @@ def centroid(image, threshold=0, binarize=False):
     -------
     The binarize option can be useful for apertures, expected
     to be uniformly lit.
-    ------------------------------------------------------ '''
+    ------------------------------------------------------"""
 
     signal = np.where(image > threshold)
     sy, sx = image.shape[0], image.shape[1]
@@ -375,15 +374,15 @@ def centroid(image, threshold=0, binarize=False):
     profx -= np.min(profx)
     profy -= np.min(profy)
 
-    x0 = (profx*np.arange(sx)).sum() / profx.sum()
-    y0 = (profy*np.arange(sy)).sum() / profy.sum()
+    x0 = (profx * np.arange(sx)).sum() / profx.sum()
+    y0 = (profy * np.arange(sy)).sum() / profy.sum()
 
     return (x0, y0)
 
 
 # =========================================================================
 def find_psf_center(img, verbose=True, nbit=10, wmin=10.0):
-    ''' Name of function self explanatory: locate the center of a PSF.
+    """Name of function self explanatory: locate the center of a PSF.
 
     ------------------------------------------------------------------
     Uses an iterative method with a window of shrinking size to
@@ -392,21 +391,21 @@ def find_psf_center(img, verbose=True, nbit=10, wmin=10.0):
     Options:
     - nbit: number of iterations (default 10 is good for 512x512 imgs)
     - verbose: in case you are interested in the convergence
-    ------------------------------------------------------------------ '''
+    ------------------------------------------------------------------"""
     temp = img.copy()
-    bckg = np.median(temp)    # background level
+    bckg = np.median(temp)  # background level
     temp -= bckg
     mfilt = medfilt(temp, 3)  # median filtered, kernel size = 3
-    (sy, sx) = mfilt.shape    # size of "image"
-    xc, yc = sx/2, sy/2       # first estimate for psf center
+    (sy, sx) = mfilt.shape  # size of "image"
+    xc, yc = sx / 2, sy / 2  # first estimate for psf center
 
     signal = np.zeros_like(img)
-    signal[mfilt > 0.1*mfilt.max()] = 1.0
+    signal[mfilt > 0.1 * mfilt.max()] = 1.0
 
-    i0 = float(nbit-1) / np.log(sx/wmin)
+    i0 = float(nbit - 1) / np.log(sx / wmin)
 
     for it in range(nbit):
-        sz = np.round(sx/2 * np.exp(-it/i0))
+        sz = np.round(sx / 2 * np.exp(-it / i0))
         x0 = np.max([int(0.5 + xc - sz), 0])
         y0 = np.max([int(0.5 + yc - sz), 0])
         x1 = np.min([int(0.5 + xc + sz), sx])
@@ -415,15 +414,16 @@ def find_psf_center(img, verbose=True, nbit=10, wmin=10.0):
         mask = np.zeros_like(img)
         mask[y0:y1, x0:x1] = 1.0
 
-        profx = (mfilt*mask*signal).sum(axis=0)
-        profy = (mfilt*mask*signal).sum(axis=1)
+        profx = (mfilt * mask * signal).sum(axis=0)
+        profy = (mfilt * mask * signal).sum(axis=1)
 
-        xc = (profx*np.arange(sx)).sum() / profx.sum()
-        yc = (profy*np.arange(sy)).sum() / profy.sum()
+        xc = (profx * np.arange(sx)).sum() / profx.sum()
+        yc = (profy * np.arange(sy)).sum() / profy.sum()
 
         if verbose:
-            print("\rit #%2d center = (%.2f, %.2f)" % (it+1, xc, yc),
-                  end="", flush=True)
+            print(
+                "\rit #%2d center = (%.2f, %.2f)" % (it + 1, xc, yc), end="", flush=True
+            )
     if verbose:
         print()
 
@@ -432,7 +432,7 @@ def find_psf_center(img, verbose=True, nbit=10, wmin=10.0):
 
 # =========================================================================
 def find_fourier_origin(img, mykpo, m2pix, bmax=6.0):
-    ''' ------------------------------------------------------------
+    """------------------------------------------------------------
     Finds the origin of the image that minimizes the amount of
     pointing-induced raw phase in the Fourier plane.
 
@@ -450,16 +450,18 @@ def find_fourier_origin(img, mykpo, m2pix, bmax=6.0):
 
     The *bmax* option is useful to filter out the phase information
     present at the longest baselines, which tends to be noisier.
-    ------------------------------------------------------------ '''
+    ------------------------------------------------------------"""
 
     # Find image size
     sz = img.shape[0]
-    if (sz != img.shape[1]):
-        raise UserWarning('Requires square image')
+    if sz != img.shape[1]:
+        raise UserWarning("Requires square image")
 
     # Generate Fourier plane ramps in u and v direction
-    uv = np.meshgrid((np.arange(sz//2+1)-sz//4)/float(sz),
-                     (np.arange(sz)-sz//2)/float(sz))
+    uv = np.meshgrid(
+        (np.arange(sz // 2 + 1) - sz // 4) / float(sz),
+        (np.arange(sz) - sz // 2) / float(sz),
+    )
     uv[0] = shift(uv[0])
     uv[1] = shift(uv[1])
 
@@ -469,44 +471,54 @@ def find_fourier_origin(img, mykpo, m2pix, bmax=6.0):
     img_cent = np.roll(np.roll(img, -yc_int, axis=0), -xc_int, axis=1)
 
     # Find Fourier plane coordinates which will be considered for the re-centering
-    uv_dist = np.sqrt(mykpo.kpi.UVC[:, 0]**2+mykpo.kpi.UVC[:, 1]**2)
+    uv_dist = np.sqrt(mykpo.kpi.UVC[:, 0] ** 2 + mykpo.kpi.UVC[:, 1] ** 2)
     uv_cutoff = np.where(uv_dist < float(bmax))[0]
 
     # Find best sub-pixel shift
     img_fft = np.fft.rfft2(img_cent)
-    best_xy_shift = leastsq(func=fourier_phase_resid_2d,
-                            x0=np.array([0., 0.]),
-                            args=(img_fft, mykpo, m2pix, uv, uv_cutoff),
-                            ftol=1E-1)[0]
+    best_xy_shift = leastsq(
+        func=fourier_phase_resid_2d,
+        x0=np.array([0.0, 0.0]),
+        args=(img_fft, mykpo, m2pix, uv, uv_cutoff),
+        ftol=1e-1,
+    )[0]
 
     # Return best shift
-    return [best_xy_shift[0]+xc_int, best_xy_shift[1]+yc_int]
+    return [best_xy_shift[0] + xc_int, best_xy_shift[1] + yc_int]
 
 
 # =========================================================================
 def fourier_phase_resid_2d(xy, img_fft, mykpo, m2pix, uv, uv_cutoff):
-    ''' ------------------------------------------------------------
+    """------------------------------------------------------------
     Cost function used by find_fourier_origin() defined above.
 
     Parameters:
     ----------
     - xy: tuple
-    ------------------------------------------------------------ '''
+    ------------------------------------------------------------"""
     # Shift and inverse Fourier transform image
-    img_shifted = img_fft*np.exp(i2pi*(xy[0]*uv[0]+xy[1]*uv[1]))
+    img_shifted = img_fft * np.exp(i2pi * (xy[0] * uv[0] + xy[1] * uv[1]))
     img = np.abs(np.fft.fftshift(np.fft.irfft2(img_shifted)))
 
     # Extract Fourier plane phase
-    cvis = mykpo.extract_cvis_from_img(img, m2pix, method='LDFT1')
+    cvis = mykpo.extract_cvis_from_img(img, m2pix, method="LDFT1")
 
     # Return Fourier plane phase
     return np.abs(np.angle(cvis[uv_cutoff]))
 
 
 # =========================================================================
-def determine_origin(img, mask=None, algo="BCEN", verbose=True, wmin=10.0,
-                     mykpo=None, m2pix=None, bmax=None):
-    ''' ------------------------------------------------------------
+def determine_origin(
+    img,
+    mask=None,
+    algo="BCEN",
+    verbose=True,
+    wmin=10.0,
+    mykpo=None,
+    m2pix=None,
+    bmax=None,
+):
+    """------------------------------------------------------------
     Determines the origin of the image, using among possible algorithms.
 
     Parameters:
@@ -518,7 +530,7 @@ def determine_origin(img, mask=None, algo="BCEN", verbose=True, wmin=10.0,
       + "COGI": center of gravity of image
     - verbose: display some additional info (boolean, default=True)
     - wmin: size of the last centering window (in pixels)
-    ------------------------------------------------------------ '''
+    ------------------------------------------------------------"""
     if algo.__class__ is not str:
         print("")
         algo = "BCEN"
@@ -543,10 +555,20 @@ def determine_origin(img, mask=None, algo="BCEN", verbose=True, wmin=10.0,
 
 
 # =========================================================================
-def recenter(im0, mask=None, algo="BCEN", subpix=True, between=False,
-             verbose=True, return_center=False, dxdy=None, mykpo=None,
-             m2pix=None, bmax=None):
-    ''' ------------------------------------------------------------
+def recenter(
+    im0,
+    mask=None,
+    algo="BCEN",
+    subpix=True,
+    between=False,
+    verbose=True,
+    return_center=False,
+    dxdy=None,
+    mykpo=None,
+    m2pix=None,
+    bmax=None,
+):
+    """------------------------------------------------------------
     Re-centering algorithm of a 2D image im0 for kernel-analysis
 
     Parameters:
@@ -577,22 +599,28 @@ def recenter(im0, mask=None, algo="BCEN", subpix=True, between=False,
     -------
     - The optional mask is *not applied* to the final image.
     - "between=True" effective only if "subpix=True"
-    ------------------------------------------------------------ '''
+    ------------------------------------------------------------"""
 
     ysz, xsz = im0.shape
 
     if dxdy is None:
-        (x0, y0) = determine_origin(im0, mask=mask, algo=algo, verbose=verbose,
-                                    mykpo=mykpo, m2pix=m2pix, bmax=bmax)
+        (x0, y0) = determine_origin(
+            im0,
+            mask=mask,
+            algo=algo,
+            verbose=verbose,
+            mykpo=mykpo,
+            m2pix=m2pix,
+            bmax=bmax,
+        )
 
-        dy, dx = (y0-ysz/2), (x0-xsz/2)
+        dy, dx = (y0 - ysz / 2), (x0 - xsz / 2)
         if between:
             dy += 0.5
             dx += 0.5
 
         if verbose:
-            print("centroid: dx=%+5.2f, dy=%+5.2f\n" % (dx, dy),
-                  end="", flush=True)
+            print("centroid: dx=%+5.2f, dy=%+5.2f\n" % (dx, dy), end="", flush=True)
 
     else:
         dx, dy = dxdy
@@ -600,41 +628,42 @@ def recenter(im0, mask=None, algo="BCEN", subpix=True, between=False,
     # integer pixel recentering first
     dx_temp = dx
     dy_temp = dy
-    im0 = np.roll(np.roll(im0, -int(round(dx)), axis=1),
-                  -int(round(dy)), axis=0)
+    im0 = np.roll(np.roll(im0, -int(round(dx)), axis=1), -int(round(dy)), axis=0)
 
     if verbose:
-        print("recenter: dx=%+5d, dy=%+5d\n" % (-round(dx), -round(dy)),
-              end="", flush=True)
+        print(
+            "recenter: dx=%+5d, dy=%+5d\n" % (-round(dx), -round(dy)),
+            end="",
+            flush=True,
+        )
 
     # optional FFT-based subpixel recentering step
     # requires insertion into a zero-padded square array (dim. power of two)
     if subpix:
         temp = np.max(im0.shape)  # max dimension of image
 
-        for sz in 32 * 2**np.arange(6):
+        for sz in 32 * 2 ** np.arange(6):
             if sz >= temp:
                 break
-        dz = sz/2.           # image half-size
+        dz = sz / 2.0  # image half-size
 
-        xx, yy = np.meshgrid(np.arange(sz)-dz, np.arange(sz)-dz)
-        wx, wy = xx*np.pi/dz, yy*np.pi/dz
+        xx, yy = np.meshgrid(np.arange(sz) - dz, np.arange(sz) - dz)
+        wx, wy = xx * np.pi / dz, yy * np.pi / dz
 
         dx -= np.round(dx)
         dy -= np.round(dy)
 
         if verbose:
-            print("recenter: dx=%+5.2f, dy=%+5.2f\n" % (-dx, -dy),
-                  end="", flush=True)
+            print("recenter: dx=%+5.2f, dy=%+5.2f\n" % (-dx, -dy), end="", flush=True)
         # insert image in zero-padded array (dim. power of two)
         im = np.zeros((sz, sz))
-        orix, oriy = (sz-xsz)//2, (sz-ysz)//2
-        im[oriy:oriy+ysz, orix:orix+xsz] = im0
+        orix, oriy = (sz - xsz) // 2, (sz - ysz) // 2
+        im[oriy : oriy + ysz, orix : orix + xsz] = im0
 
         slope = shift(dx * wx + dy * wy)
-        offset = np.exp(1j*slope)
+        offset = np.exp(1j * slope)
         dummy = np.real(shift(ifft(offset * fft(shift(im)))))
-        im0 = dummy[oriy:oriy+ysz, orix:orix+xsz]
+        im0 = dummy[oriy : oriy + ysz, orix : orix + xsz]
     if not return_center:
         return im0
     else:
@@ -643,7 +672,7 @@ def recenter(im0, mask=None, algo="BCEN", subpix=True, between=False,
 
 # =========================================================================
 def compute_DFTM2(coords, m2pix, isz, axis=0):
-    ''' -----------------------------------------------------------------------
+    """-----------------------------------------------------------------------
     Two-sided DFT matrix to be used with the "LDFT2" extraction method,
     DFT matrix computed for exact u (or v) coordinates.
 
@@ -668,25 +697,25 @@ def compute_DFTM2(coords, m2pix, isz, axis=0):
     >> FT = LL.dot(img).dot(RR)
 
     This last command returns the properly sampled 2D FT of the img.
-    ----------------------------------------------------------------------- '''
+    -----------------------------------------------------------------------"""
 
     i2pi = 1j * 2 * np.pi
 
     bl_c = coords * m2pix
-    w_v = np.exp(-i2pi/isz * bl_c, dtype=np.complex128)  # roots of DFT matrix
+    w_v = np.exp(-i2pi / isz * bl_c, dtype=np.complex128)  # roots of DFT matrix
     ftm = np.zeros((w_v.size, isz), dtype=w_v.dtype)
 
     for i in range(isz):
-        ftm[:, i] = w_v**(i - isz/2) / np.sqrt(isz)
+        ftm[:, i] = w_v ** (i - isz / 2) / np.sqrt(isz)
     if axis != 0:
-        return(ftm.T)
+        return ftm.T
     else:
-        return(ftm)
+        return ftm
 
 
 # =========================================================================
 def compute_DFTM1(coords, m2pix, isz, inv=False, dprec=True):
-    ''' ------------------------------------------------------------------
+    """------------------------------------------------------------------
     Single-sided DFT matrix to be used with the "LDFT1" extraction method,
     DFT matrix computed for exact u (or v) coordinates.
 
@@ -715,7 +744,7 @@ def compute_DFTM1(coords, m2pix, isz, inv=False, dprec=True):
     >> FT = FF.dot(img.flatten())
 
     This last command returns a 1D vector FT of the img.
-    ------------------------------------------------------------------ '''
+    ------------------------------------------------------------------"""
 
     i2pi = 1j * 2 * np.pi
 
@@ -724,27 +753,33 @@ def compute_DFTM1(coords, m2pix, isz, inv=False, dprec=True):
     if dprec is True:
         mydtype = np.complex128
 
-    xx, yy = np.meshgrid(np.arange(isz)-isz/2, np.arange(isz)-isz/2)
+    xx, yy = np.meshgrid(np.arange(isz) - isz / 2, np.arange(isz) - isz / 2)
     uvc = coords * m2pix
     nuv = uvc.shape[0]
 
     if inv is True:
         WW = np.zeros((isz**2, nuv), dtype=mydtype)
         for i in range(nuv):
-            WW[:, i] = np.exp(i2pi*(uvc[i, 0] * xx.flatten() +
-                                    uvc[i, 1] * yy.flatten())/float(isz))
+            WW[:, i] = np.exp(
+                i2pi
+                * (uvc[i, 0] * xx.flatten() + uvc[i, 1] * yy.flatten())
+                / float(isz)
+            )
     else:
         WW = np.zeros((nuv, isz**2), dtype=mydtype)
 
         for i in range(nuv):
-            WW[i] = np.exp(-i2pi*(uvc[i, 0] * xx.flatten() +
-                                  uvc[i, 1] * yy.flatten())/float(isz))
-    return(WW)
+            WW[i] = np.exp(
+                -i2pi
+                * (uvc[i, 0] * xx.flatten() + uvc[i, 1] * yy.flatten())
+                / float(isz)
+            )
+    return WW
 
 
 # =========================================================================
 def uv_phase_regrid_matrix(UVD, UVS, rad):
-    '''------------------------------------------------------------------
+    """------------------------------------------------------------------
     !!EXPERIMENTAL FUNCTION!!
 
     Not sure how useful this will eventually turn however numerical experiments
@@ -770,7 +805,7 @@ def uv_phase_regrid_matrix(UVD, UVS, rad):
 
     Returns a 36x1350 matrix that averages the phase measured in the F plane
     with the dense model, so as to produce an estimate for the sparse one.
-    ------------------------------------------------------------------ '''
+    ------------------------------------------------------------------"""
 
     uvc1 = UVS.copy()
     uvc2 = UVD.copy()
@@ -783,8 +818,9 @@ def uv_phase_regrid_matrix(UVD, UVS, rad):
     GG = np.zeros((nuv1, nuv2))
     for ii in range(nuv1):
         uu, vv = uvc1[ii]
-        aa = np.where((np.abs(uvc2[:, 1] - vv) <= rad) *
-                      (np.abs(uvc2[:, 0] - uu) <= rad))
+        aa = np.where(
+            (np.abs(uvc2[:, 1] - vv) <= rad) * (np.abs(uvc2[:, 0] - uu) <= rad)
+        )
 
         for jj in range(len(aa[0])):
             index = aa[0][jj]
@@ -795,7 +831,7 @@ def uv_phase_regrid_matrix(UVD, UVS, rad):
                 GG[ii, index] = 1.0
 
     WW = np.abs(GG).sum(axis=1)
-    GG = np.diag(1/WW).dot(GG)
+    GG = np.diag(1 / WW).dot(GG)
     return GG
 
 
@@ -858,7 +894,7 @@ def hexagon(dim, width, interp_edge=True):
 
 # =========================================================================
 def create_discrete_model(apert, ppscale, step, binary=True, tmin=0.8):
-    '''------------------------------------------------------------------
+    """------------------------------------------------------------------
 
     Create the discrete (square grid) model of a provited aperture later
     used to build a kernel model.
@@ -916,7 +952,7 @@ def create_discrete_model(apert, ppscale, step, binary=True, tmin=0.8):
     has to be adjusted.
 
     ------------------------------------------------------------------
-    '''
+    """
 
     PSZ = apert.shape[0]
     nbs = int(PSZ / (step / ppscale))  # number of sample points across
@@ -928,16 +964,16 @@ def create_discrete_model(apert, ppscale, step, binary=True, tmin=0.8):
     #   pad the pupil array
     # ============================
 
-    PW = int(step / ppscale)                # padding width
-    padap = np.zeros((PSZ+2*PW, PSZ+2*PW))  # padded array
-    padap[PW:PW+PSZ, PW:PW+PSZ] = apert
-    DSZ = PSZ/2 + PW
+    PW = int(step / ppscale)  # padding width
+    padap = np.zeros((PSZ + 2 * PW, PSZ + 2 * PW))  # padded array
+    padap[PW : PW + PSZ, PW : PW + PSZ] = apert
+    DSZ = PSZ / 2 + PW
 
     # ============================
     #  re-grid the pupil -> pmask
     # ============================
 
-    pos = step * (np.arange(nbs) - nbs//2)
+    pos = step * (np.arange(nbs) - nbs // 2)
     xgrid, ygrid = np.meshgrid(pos, pos)
     pmask = np.zeros_like(xgrid)
 
@@ -946,9 +982,9 @@ def create_discrete_model(apert, ppscale, step, binary=True, tmin=0.8):
 
     for jj in range(nbs):
         for ii in range(nbs):
-            x0 = int(xpos[jj, ii])-PW//2
-            y0 = int(ypos[jj, ii])-PW//2
-            pmask[jj, ii] = padap[y0:y0+PW, x0:x0+PW].mean()
+            x0 = int(xpos[jj, ii]) - PW // 2
+            y0 = int(ypos[jj, ii]) - PW // 2
+            pmask[jj, ii] = padap[y0 : y0 + PW, x0 : x0 + PW].mean()
 
     # ==========================
     #  build the discrete model
@@ -959,7 +995,7 @@ def create_discrete_model(apert, ppscale, step, binary=True, tmin=0.8):
     if binary is True:
         for jj in range(nbs):
             for ii in range(nbs):
-                if (pmask[jj, ii] > tmin):
+                if pmask[jj, ii] > tmin:
                     pmask[jj, ii] = 1.0
                     xx.append(xgrid[jj, ii])
                     yy.append(ygrid[jj, ii])
@@ -970,7 +1006,7 @@ def create_discrete_model(apert, ppscale, step, binary=True, tmin=0.8):
     else:
         for jj in range(nbs):
             for ii in range(nbs):
-                if (pmask[jj, ii] > tmin):
+                if pmask[jj, ii] > tmin:
                     xx.append(xgrid[jj, ii])
                     yy.append(ygrid[jj, ii])
                     tt.append(pmask[jj, ii])
@@ -985,7 +1021,7 @@ def create_discrete_model(apert, ppscale, step, binary=True, tmin=0.8):
 
 # =========================================================================
 def symetrizes_model(model, axis=0, cut=1e-1):
-    ''' -------------------------------------------------------------------
+    """-------------------------------------------------------------------
     Returns a symetrized version of the original pupil model.
 
     This is what you use to automatically fix a model coming out of the
@@ -1004,7 +1040,7 @@ def symetrizes_model(model, axis=0, cut=1e-1):
 
     When attempting to "fix" the grid model, one could add or remove
     sub-apertures. Here we only remove sub-apertures!
-    ------------------------------------------------------------------- '''
+    -------------------------------------------------------------------"""
 
     flag = []
     nap = model.shape[0]

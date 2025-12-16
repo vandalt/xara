@@ -1,30 +1,30 @@
 #!/usr/bin/env python
 
-'''------------------------------------------------------------------
-                XARA: Extreme Angular Resolution Astronomy
-    ------------------------------------------------------------------
-    ---
-    XARA is a python module to create, and extract Kernel-phase data
-    structures, using the theory of Martinache, 2010, ApJ, 724, 464.
-    ----
+"""------------------------------------------------------------------
+            XARA: Extreme Angular Resolution Astronomy
+------------------------------------------------------------------
+---
+XARA is a python module to create, and extract Kernel-phase data
+structures, using the theory of Martinache, 2010, ApJ, 724, 464.
+----
 
-    The module is constructed around two main classes:
-    -------------------------------------------------
+The module is constructed around two main classes:
+-------------------------------------------------
 
-    - KPI: Kernel-Phase Information
+- KPI: Kernel-Phase Information
 
-      An object packing the data structures that guide the
-      interpretation of images from an inteferometric point of view,
-      leading to applications like kernel-phase and/or wavefront
-      sensing
+  An object packing the data structures that guide the
+  interpretation of images from an inteferometric point of view,
+  leading to applications like kernel-phase and/or wavefront
+  sensing
 
-    - KPO: Kernel-Phase Observation
+- KPO: Kernel-Phase Observation
 
-      An object that contains a KPI along with optional data extracted
-      from the Fourier transform of images, using the KPI model and a
-      handful additional pieces of information: wavelength, pixel scale,
-      detector position angle and epoch to enable their interpretation
-      ---------------------------------------------------------------- '''
+  An object that contains a KPI along with optional data extracted
+  from the Fourier transform of images, using the KPI model and a
+  handful additional pieces of information: wavelength, pixel scale,
+  detector position angle and epoch to enable their interpretation
+  ----------------------------------------------------------------"""
 
 __version__ = "1.0.1"
 
@@ -36,6 +36,6 @@ from xara import (
     kpo as kpo,
 )
 
-from xara.kpo import KPO
-from xara.kpi import KPI
-from xara.iwfs import IWFS
+from xara.kpo import KPO as KPO
+from xara.kpi import KPI as KPI
+from xara.iwfs import IWFS as IWFS
