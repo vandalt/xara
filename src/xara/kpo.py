@@ -1386,7 +1386,7 @@ class KPO:
         """
         kpo = self.copy()
         nsets = len(kpo.KPDT)
-        if all([d.shape[0] == 1 for d in kpo.KPDT]):
+        if all([d.shape[0] == 1 for d in kpo.KPDT]) and axis == "ints":
             return kpo
 
         has_errors = len(kpo.KPSIG) > 0 and all([sig is not None for sig in kpo.KPSIG])
