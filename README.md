@@ -10,7 +10,7 @@ Over the years, the package has been used by several graduate students, motivate
 
 ## Tutorial/documentation
 
-A documentation featuring several tutorial examples and a fair amount of howto explanation is available here: http://frantzmartinache.eu/xara_doc/
+A documentation featuring several tutorial examples and a fair amount of howto explanation is available here: <https://frantzmartinache.eu/xara_doc/>
 
 ## Acknowledgement
 
@@ -18,5 +18,53 @@ From 2016 to 2022, the development of XARA was supported by the ERC KERNEL proje
 
 ## Installation
 
-> pip install xara-astro
+Xara can be installed from PyPI as `xara-astro`:
 
+```bash
+pip install xara-astro
+```
+
+### For development
+
+To install Xara for development, first clone this repository:
+
+```bash
+git clone https://github.com/fmartinache/xara.git
+```
+
+It is generally a good idea to install each package in a separate virtual environment.
+You can create one with
+
+```bash
+conda create -n xara python
+conda activate xara
+```
+
+or
+
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+Then, install Xara in editable mode, and with the test dependencies.
+
+```bash
+python -m pip install -U -e ".[test]"
+```
+
+You can then run the tests with
+
+
+```bash
+python -m pytest
+```
+
+We use pre-commit to format the code before pushing it to the repository.
+You can install pre-commit with `pip install pre-commit` and set it up with
+
+```bash
+pre-commit install
+```
+
+It will then run automatically after every commit.
